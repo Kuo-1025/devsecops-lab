@@ -29,6 +29,9 @@ jobs:
       # 這一層要新增的是三個步驟，依序串起來：
       # ════════════════════════════════════════════════════
 
+      - name: SCA - Dependency Scan (pip-audit)
+        continue-on-error: true
+        run: pip install pip-audit && pip-audit -r requirements.txt
       # ─────────────────────────────────────────
       # 待補 2-1：SCA（Software Composition Analysis）— pip-audit
       # 做什麼：掃 requirements.txt，比對已知 CVE 資料庫，抓「用了有洞的
@@ -38,6 +41,11 @@ jobs:
       # continue-on-error，job 會在這裡就中斷，後面的 SAST 步驟永遠沒機會跑。
       # ─────────────────────────────────────────
 
+      - name: SAST - Static Analysis (semgrep)
+        run: |
+          pip install semgrep
+          semgrep --config=p/python --config=p/owasp-top-ten --json --output=semgrep-report.json . || true
+          python3 scripts/security_gate.py semgrep-report.json
       # ─────────────────────────────────────────
       # 待補 2-2：SAST（Static Application Security Testing）— semgrep
       # 做什麼：不執行程式，直接讀原始碼找危險寫法（例如 SQL 組字串、
@@ -65,16 +73,6 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install pytest
-
-      - name: SCA - Dependency Scan (pip-audit)
-        continue-on-error: true
-        run: pip install pip-audit && pip-audit -r requirements.txt
-
-      - name: SAST - Static Analysis (semgrep)
-        run: |
-          pip install semgrep
-          semgrep --config=p/python --config=p/owasp-top-ten --json --output=semgrep-report.json . || true
-          python3 scripts/security_gate.py semgrep-report.json
 
       - name: Run tests
         run: pytest tests/ -v
